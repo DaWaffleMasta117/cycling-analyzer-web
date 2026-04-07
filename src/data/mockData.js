@@ -5,7 +5,7 @@
 
 import { DURATIONS, DURATION_INDEX } from "../constants/powerBands";
 
-const MOCK_WEIGHT_KG = 81;
+export const MOCK_WEIGHT_KG = 70;
 
 // Deterministic seeded RNG — keeps mock curves stable across renders
 function generateCurve(multiplier, seed = 1) {
@@ -67,5 +67,3 @@ export function getCurveForPreset(presetId) {
   if (p.curveKey === "__alltime") return ALL_TIME_CURVE;
   return HISTORICAL_CURVES[p.curveKey] ?? null;
 }
-
-export { MOCK_WEIGHT_KG };

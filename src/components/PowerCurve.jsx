@@ -1,24 +1,65 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, ReferenceLine, ReferenceArea,
+  ResponsiveContainer, ReferenceLine, Customized,
 } from "recharts";
 
 import "./PowerCurve.css";
 import { WATT_BANDS, BAND_COLORS, DURATIONS, DURATION_LABELS, DURATION_INDEX } from "../constants/powerBands";
-import {
-  CURRENT_CURVE, MOCK_BREAKTHROUGHS, PRESETS, MOCK_WEIGHT_KG,
-  getCurveForPreset, getMockCustomCurve,
-} from "../data/mockData";
+import { PRESETS, getCurveForPreset, getMockCustomCurve } from "../data/mockData";
+
+// ─── Band fills via Customized (avoids ReferenceArea's infinite-dispatch bug) ─
+
+function BandFills({ xAxisMap, yAxisMap, bandPairs, rowData }) {
+  const yAxis = yAxisMap && Object.values(yAxisMap)[0];
+  const xAxis = xAxisMap && Object.values(xAxisMap)[0];
+  if (!yAxis?.scale || !xAxis?.scale || !rowData?.length) return null;
+
+  const [xMin, xMax] = xAxis.scale.range();
+
+  return (
+    <g>
+      {bandPairs.map(([lo, hi]) => {
+        const loVal = rowData[0][lo];
+        const hiVal = rowData[0][hi];
+        if (loVal == null || hiVal == null) return null;
+        const yTop    = yAxis.scale(hiVal);
+        const yBottom = yAxis.scale(loVal);
+        if (!isFinite(yTop) || !isFinite(yBottom)) return null;
+        return (
+          <rect
+            key={`${lo}-${hi}`}
+            x={xMin}
+            width={xMax - xMin}
+            y={yTop}
+            height={Math.max(0, yBottom - yTop)}
+            fill={BAND_COLORS[hi]}
+            fillOpacity={0.35}
+          />
+        );
+      })}
+    </g>
+  );
+}
 
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
 
-function buildChartData(compareCurve, showBands, weightKg) {
+// Converts the API response curve array into the indexed format the chart expects
+function buildCurrentCurve(apiCurve) {
+  if (!apiCurve) return null;
+  return DURATIONS.map(d => {
+    const point = apiCurve.find(p => p.duration_seconds === d);
+    return point ? point.watts : 0;
+  });
+}
+
+function buildChartData(currentCurve, compareCurve, showBands, weightKg) {
+  if (!currentCurve) return [];
   return DURATIONS.map((d, i) => {
     const row = {
       d,
       label: DURATION_LABELS[d],
-      current: CURRENT_CURVE[i],
+      current: currentCurve[i],
       ...(compareCurve ? { compare: compareCurve[i] } : {}),
     };
     if (showBands) {
@@ -33,7 +74,7 @@ function buildChartData(compareCurve, showBands, weightKg) {
 // ─── CurveDot — stable reference prevents recharts re-rendering all dots ──────
 
 function CurveDot({ cx, cy, payload, breakthroughs }) {
-  const isBt = breakthroughs.some((b) => DURATION_LABELS[b.duration] === payload.label);
+  const isBt = breakthroughs.some(b => DURATION_LABELS[b.duration] === payload.label);
   if (!isBt) return null;
   return <circle cx={cx} cy={cy} r={4} fill="#00e5a0" stroke="#07070f" strokeWidth={2} />;
 }
@@ -63,7 +104,7 @@ function CompareSelector({ selected, customRange, onSelect, onClear }) {
     setOpen(false);
   };
 
-  const selectedPreset = PRESETS.find((p) => p.id === selected);
+  const selectedPreset = PRESETS.find(p => p.id === selected);
   const buttonLabel = selected
     ? selected === "custom"
       ? `${customRange?.from} – ${customRange?.to}`
@@ -77,7 +118,7 @@ function CompareSelector({ selected, customRange, onSelect, onClear }) {
         aria-pressed={!!selected}
         aria-haspopup="dialog"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(v => !v)}
         style={{ whiteSpace: "nowrap" }}
       >
         {selected ? "▸ " : "+ "}{buttonLabel}
@@ -91,9 +132,8 @@ function CompareSelector({ selected, customRange, onSelect, onClear }) {
 
       {open && (
         <div role="dialog" aria-label="Select comparison period" className="compare-dropdown">
-
           <div className="compare-dropdown__tabs">
-            {[{ id: "preset", label: "Quick Select" }, { id: "custom", label: "Date Range" }].map((t) => (
+            {[{ id: "preset", label: "Quick Select" }, { id: "custom", label: "Date Range" }].map(t => (
               <button
                 key={t.id}
                 onClick={() => setMode(t.id)}
@@ -106,14 +146,13 @@ function CompareSelector({ selected, customRange, onSelect, onClear }) {
 
           {mode === "preset" && (
             <ul role="listbox" aria-label="Period presets" className="compare-dropdown__list">
-              {PRESETS.map((p) => (
+              {PRESETS.map(p => (
                 <li key={p.id} role="option" aria-selected={selected === p.id}>
                   <button
                     onClick={() => handlePresetClick(p.id)}
                     className={`compare-dropdown__option${selected === p.id ? " compare-dropdown__option--selected" : ""}`}
                   >
                     <span className="compare-dropdown__option-label">{p.label}</span>
-                    {/* alltime range label color is dynamic — driven by p.id */}
                     <span
                       className="compare-dropdown__option-range"
                       style={{ color: p.id === "alltime" ? "#00e5a044" : "#3a3a4a" }}
@@ -133,14 +172,14 @@ function CompareSelector({ selected, customRange, onSelect, onClear }) {
               </p>
               {[
                 { id: "from", label: "From", value: customFrom, setter: setCustomFrom, max: customTo || undefined, min: undefined },
-                { id: "to",   label: "To",   value: customTo,   setter: setCustomTo,   min: customFrom || undefined, max: undefined },
+                { id: "to", label: "To", value: customTo, setter: setCustomTo, min: customFrom || undefined, max: undefined },
               ].map(({ id, label, value, setter, min, max }) => (
                 <label key={id} className="compare-dropdown__date-label">
                   <span className="compare-dropdown__date-field-label">{label}</span>
                   <input
                     type="date"
                     value={value}
-                    onChange={(e) => setter(e.target.value)}
+                    onChange={e => setter(e.target.value)}
                     min={min}
                     max={max}
                     aria-label={`Comparison range ${label.toLowerCase()} date`}
@@ -181,7 +220,7 @@ function BreakthroughToast({ items, onDismiss }) {
       aria-label="New power records"
       className={`bt-toast${visible ? " bt-toast--visible" : ""}`}
     >
-      {items.map((b) => (
+      {items.map(b => (
         <div key={b.duration} className="bt-toast__item">
           <span className="bt-toast__badge">▲ New Record</span>
           <span className="bt-toast__text">{b.label} — {b.watts}W — {b.date}</span>
@@ -212,8 +251,8 @@ function StatPill({ label, value, unit, highlight }) {
 function CustomTooltip({ active, payload, label, showWkg, compareLabel, weightKg }) {
   if (!active || !payload?.length) return null;
 
-  const cur   = payload.find((p) => p.dataKey === "current");
-  const cmp   = payload.find((p) => p.dataKey === "compare");
+  const cur = payload.find(p => p.dataKey === "current");
+  const cmp = payload.find(p => p.dataKey === "compare");
   const delta = cur && cmp ? (cur.value - cmp.value).toFixed(1) : null;
 
   return (
@@ -222,7 +261,7 @@ function CustomTooltip({ active, payload, label, showWkg, compareLabel, weightKg
 
       {cur && (
         <div className="pc-tooltip__row">
-          <span className="pc-tooltip__key">Q1 2026</span>
+          <span className="pc-tooltip__key">Current</span>
           <span className="pc-tooltip__val">{cur.value}W</span>
         </div>
       )}
@@ -244,7 +283,6 @@ function CustomTooltip({ active, payload, label, showWkg, compareLabel, weightKg
       )}
 
       {delta !== null && (
-        // color is genuinely dynamic — positive vs negative value at runtime
         <div
           className="pc-tooltip__delta"
           style={{ color: parseFloat(delta) >= 0 ? "#00e5a0" : "#ff6b6b" }}
@@ -259,7 +297,7 @@ function CustomTooltip({ active, payload, label, showWkg, compareLabel, weightKg
 function BandLegend({ visible, onToggle }) {
   return (
     <div className="pc-band-legend">
-      {Object.keys(WATT_BANDS).map((band) => (
+      {Object.keys(WATT_BANDS).map(band => (
         <button
           key={band}
           onClick={() => onToggle(band)}
@@ -267,7 +305,6 @@ function BandLegend({ visible, onToggle }) {
           aria-label={`Toggle ${band} W/kg band`}
           className="band-legend__btn"
         >
-          {/* background and border driven by BAND_COLORS constant — must stay inline */}
           <span
             className="band-legend__swatch"
             style={{
@@ -287,21 +324,58 @@ function BandLegend({ visible, onToggle }) {
   );
 }
 
+// ─── Loading and error states ─────────────────────────────────────────────────
+
+function LoadingState() {
+  return (
+    <div className="pc-page" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <p style={{ color: "#555", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+        Loading power curve...
+      </p>
+    </div>
+  );
+}
+
+function ErrorState({ message }) {
+  return (
+    <div className="pc-page" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <p style={{ color: "#ff6b6b", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+        {message}
+      </p>
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-export default function PowerCurve({ athleteWeightKg = MOCK_WEIGHT_KG }) {
-  const [showBands, setShowBands]         = useState(true);
-  const [showWkg, setShowWkg]             = useState(false);
-  const [visibleBands, setVisibleBands]   = useState(new Set(["Cat 4", "Cat 3", "Cat 2", "Cat 1"]));
-  const [breakthroughs, setBreakthroughs] = useState(MOCK_BREAKTHROUGHS);
-  const [mounted, setMounted]             = useState(false);
-  const [compareId, setCompareId]         = useState(null);
+// athleteWeightKg — from Strava athlete profile via the API
+// apiCurve        — array of { duration_seconds, watts, watts_per_kg } from the Rust engine
+// breakthroughs   — array of { duration, label, watts, date } PRs from the API
+// isLoading       — true while the API call is in flight
+// error           — error message string if the API call failed
+export default function PowerCurve({
+  athleteWeightKg = 70,
+  apiCurve = null,
+  isLoading = false,
+  error = null,
+}) {
+  const [showBands, setShowBands] = useState(true);
+  const [showWkg, setShowWkg] = useState(false);
+  const [visibleBands, setVisibleBands] = useState(new Set(["Cat 4", "Cat 3", "Cat 2", "Cat 1"]));
+  const [breakthroughs, setBreakthroughs] = useState([]);
+  const [mounted, setMounted] = useState(false);
+  const [compareId, setCompareId] = useState(null);
   const [compareCustomRange, setCompareCustomRange] = useState(null);
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 100);
     return () => clearTimeout(t);
   }, []);
+
+  // Keep breakthroughs in sync if the prop changes (e.g. after a sync)
+  useEffect(() => {
+    setBreakthroughs(breakthroughs);
+  }, [breakthroughs]);
 
   const handleCompareSelect = useCallback((id, customRange) => {
     setCompareId(id);
@@ -313,6 +387,10 @@ export default function PowerCurve({ athleteWeightKg = MOCK_WEIGHT_KG }) {
     setCompareCustomRange(null);
   }, []);
 
+  // Convert the API curve array into the indexed array the chart uses
+  const currentCurve = useMemo(() => buildCurrentCurve(apiCurve), [apiCurve]);
+
+  // Compare curve still uses mock data for historical periods until the API supports it
   const compareCurve = useMemo(() => {
     if (!compareId) return null;
     if (compareId === "custom") return getMockCustomCurve();
@@ -326,36 +404,56 @@ export default function PowerCurve({ athleteWeightKg = MOCK_WEIGHT_KG }) {
         ? `${compareCustomRange.from} – ${compareCustomRange.to}`
         : "Custom range";
     }
-    return PRESETS.find((p) => p.id === compareId)?.label ?? null;
+    return PRESETS.find(p => p.id === compareId)?.label ?? null;
   }, [compareId, compareCustomRange]);
 
   const isAllTime = compareId === "alltime";
 
   const data = useMemo(
-    () => buildChartData(compareCurve, showBands, athleteWeightKg),
-    [compareCurve, showBands, athleteWeightKg]
+    () => buildChartData(currentCurve, compareCurve, showBands, athleteWeightKg),
+    [currentCurve, compareCurve, showBands, athleteWeightKg]
   );
 
-  const toggleBand = useCallback((band) => {
-    setVisibleBands((prev) => {
+  const toggleBand = useCallback(band => {
+    setVisibleBands(prev => {
       const next = new Set(prev);
       next.has(band) ? next.delete(band) : next.add(band);
       return next;
     });
   }, []);
 
-  const ftp    = Math.round(CURRENT_CURVE[DURATION_INDEX[3600]] * 0.95);
-  const map5m  = CURRENT_CURVE[DURATION_INDEX[300]];
-  const sprint = CURRENT_CURVE[DURATION_INDEX[5]];
-  const wkgFtp = (ftp / athleteWeightKg).toFixed(2);
+  // Derived stats from the real curve data
+  const ftp = currentCurve
+    ? Math.round(currentCurve[DURATION_INDEX[3600]] * 0.95)
+    : 0;
+  const map5m = currentCurve ? currentCurve[DURATION_INDEX[300]] : 0;
+  const sprint = currentCurve ? currentCurve[DURATION_INDEX[5]] : 0;
+  const wkgFtp = athleteWeightKg > 0 ? (ftp / athleteWeightKg).toFixed(2) : "0.00";
 
-  const bandKeys  = Object.keys(WATT_BANDS).filter((b) => visibleBands.has(b));
+  const bandKeys = Object.keys(WATT_BANDS).filter(b => visibleBands.has(b));
   const bandPairs = bandKeys.slice(0, -1).map((b, i) => [b, bandKeys[i + 1]]);
 
+  // Explicit Y-axis domain prevents recharts from auto-calculating it on every
+  // render, which is the root cause of the ReferenceArea infinite-update loop.
+  const yDomain = useMemo(() => {
+    if (!data.length) return [0, 800];
+    let max = 0;
+    data.forEach(row => {
+      Object.entries(row).forEach(([k, v]) => {
+        if (k !== "d" && k !== "label" && typeof v === "number" && v > max) max = v;
+      });
+    });
+    return [0, Math.ceil(max * 1.1)];
+  }, [data]);
+
   const renderDot = useCallback(
-    (props) => <CurveDot {...props} breakthroughs={breakthroughs} />,
+    props => <CurveDot {...props} breakthroughs={breakthroughs} />,
     [breakthroughs]
   );
+
+  if (isLoading) return <LoadingState />;
+  if (error) return <ErrorState message={error} />;
+  if (!currentCurve) return null;
 
   return (
     <div className="pc-page">
@@ -386,29 +484,29 @@ export default function PowerCurve({ athleteWeightKg = MOCK_WEIGHT_KG }) {
 
           <div className="pc-controls__separator" role="separator" />
 
-          <button className="toggle-btn" aria-pressed={showBands} onClick={() => setShowBands((v) => !v)}>
+          <button className="toggle-btn" aria-pressed={showBands} onClick={() => setShowBands(v => !v)}>
             W/kg Bands
           </button>
-          <button className="toggle-btn" aria-pressed={showWkg} onClick={() => setShowWkg((v) => !v)}>
+          <button className="toggle-btn" aria-pressed={showWkg} onClick={() => setShowWkg(v => !v)}>
             W/kg Tooltip
           </button>
 
           <div className="pc-controls__legend">
             <div className="pc-legend__item">
               <span className="pc-legend__line" aria-hidden="true" />
-              <span className="pc-legend__label">Q1 2026</span>
+              <span className="pc-legend__label">Current</span>
             </div>
             {compareCurve && (
               <div className="pc-legend__item">
-                {/* borderTop color is dynamic — allTime vs regular compare */}
                 <span
                   aria-hidden="true"
                   style={{
-                    width: 20, height: 0, display: "inline-block",
+                    width: 20,
+                    height: 0,
+                    display: "inline-block",
                     borderTop: `1.5px dashed ${isAllTime ? "#00e5a066" : "#5a5a7a"}`,
                   }}
                 />
-                {/* color is dynamic — allTime vs regular compare */}
                 <span
                   className="pc-legend__label"
                   style={{ color: isAllTime ? "#00e5a055" : "#5a5a7a" }}
@@ -427,26 +525,24 @@ export default function PowerCurve({ athleteWeightKg = MOCK_WEIGHT_KG }) {
         <div className="pc-chart-wrap">
           <BreakthroughToast
             items={breakthroughs}
-            onDismiss={(d) => setBreakthroughs((p) => p.filter((b) => b.duration !== d))}
+            onDismiss={d => setBreakthroughs(p => p.filter(b => b.duration !== d))}
           />
 
           <div aria-hidden="true" className="pc-chart__y-label">Watts</div>
 
-          <div role="img" aria-label={`Power curve chart. Q1 2026: ${sprint}W sprint, ${map5m}W at 5 min, FTP ~${ftp}W.${compareLabel ? ` Comparison overlay: ${compareLabel}.` : ""}`}>
+          <div role="img" aria-label={`Power curve chart. Current: ${sprint}W sprint, ${map5m}W at 5 min, FTP ~${ftp}W.${compareLabel ? ` Comparison overlay: ${compareLabel}.` : ""}`}>
             <ResponsiveContainer width="100%" height={380}>
               <LineChart data={data} margin={{ top: 24, right: 16, bottom: 8, left: 48 }}>
 
-                {showBands && bandPairs.map(([lo, hi]) => (
-                  <ReferenceArea
-                    key={`${lo}-${hi}`}
-                    y1={data[0][lo]}
-                    y2={data[0][hi]}
-                    fill={BAND_COLORS[hi]}
-                    fillOpacity={0.35}
+                {showBands && (
+                  <Customized
+                    component={BandFills}
+                    bandPairs={bandPairs}
+                    rowData={data}
                   />
-                ))}
+                )}
 
-                {breakthroughs.map((b) => (
+                {breakthroughs.map(b => (
                   <ReferenceLine
                     key={b.duration}
                     x={DURATION_LABELS[b.duration]}
@@ -465,11 +561,12 @@ export default function PowerCurve({ athleteWeightKg = MOCK_WEIGHT_KG }) {
                   interval={0}
                 />
                 <YAxis
+                  domain={yDomain}
                   tick={{ fontSize: 10, fill: "#444", fontFamily: "'DM Mono', monospace" }}
                   axisLine={false}
                   tickLine={false}
                   width={40}
-                  tickFormatter={(v) => `${v}W`}
+                  tickFormatter={v => `${v}W`}
                 />
                 <Tooltip
                   content={
@@ -481,7 +578,7 @@ export default function PowerCurve({ athleteWeightKg = MOCK_WEIGHT_KG }) {
                   }
                 />
 
-                {showBands && bandKeys.map((band) => (
+                {showBands && bandKeys.map(band => (
                   <Line
                     key={band}
                     type="monotone"
@@ -521,7 +618,7 @@ export default function PowerCurve({ athleteWeightKg = MOCK_WEIGHT_KG }) {
                   isAnimationActive
                   animationDuration={900}
                   animationEasing="ease-out"
-                  name="Q1 2026"
+                  name="Current"
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -532,17 +629,16 @@ export default function PowerCurve({ athleteWeightKg = MOCK_WEIGHT_KG }) {
         {showBands && (
           <div role="complementary" aria-label="W/kg category reference bands" className="pc-band-bar">
             {Object.entries(WATT_BANDS).map(([band, values], i) => {
-              const wkg5m   = values[DURATION_INDEX[300]].toFixed(1);
+              const wkg5m = values[DURATION_INDEX[300]].toFixed(1);
               const nextWkg = Object.values(WATT_BANDS)[i + 1]?.[DURATION_INDEX[300]];
-              const isUser  =
-                CURRENT_CURVE[DURATION_INDEX[300]] / athleteWeightKg >= parseFloat(wkg5m) &&
-                CURRENT_CURVE[DURATION_INDEX[300]] / athleteWeightKg < (nextWkg ?? 99);
+              const isUser =
+                currentCurve[DURATION_INDEX[300]] / athleteWeightKg >= parseFloat(wkg5m) &&
+                currentCurve[DURATION_INDEX[300]] / athleteWeightKg < (nextWkg ?? 99);
 
               return (
                 <div
                   key={band}
                   className="pc-band-bar__cell"
-                  // background and border-right are dynamic — isUser state + index position
                   style={{
                     background: isUser ? "#0d1a2a" : "transparent",
                     borderRight: i < 5 ? "1px solid #1a1a28" : "none",
@@ -564,7 +660,7 @@ export default function PowerCurve({ athleteWeightKg = MOCK_WEIGHT_KG }) {
         {/* Footer */}
         <div className="pc-footer">
           <p className="pc-footer__text">
-            Last updated after <span>Côte de Pike ride</span> · Mar 1, 2026
+            Power curve calculated from {apiCurve?.length ?? 0} data points
           </p>
           <p className="pc-footer__text">
             W/kg bands based on ≥5 min efforts · Body weight {athleteWeightKg}kg
