@@ -12,18 +12,26 @@
 
 .pc-page {
   background: #07070f;
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   font-family: 'DM Sans', 'Helvetica Neue', sans-serif;
   color: #e0e0e0;
 }
 
 .pc-container {
   max-width: 1100px;
+  width: 100%;
   margin: 0 auto;
-  padding: 40px 24px;
+  padding: 64px 24px 16px;
   opacity: 0;
   transform: translateY(12px);
   transition: opacity 0.5s ease, transform 0.5s ease;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .pc-container--mounted {
@@ -225,6 +233,8 @@ input:focus-visible {
 
 .pc-chart-wrap {
   position: relative;
+  flex: 1;
+  min-height: 0;
 }
 
 .pc-chart__y-label {
@@ -548,26 +558,6 @@ input:focus-visible {
   margin-top: 2px;
 }
 
-/* ─── Footer ─────────────────────────────────────────────────────────────────── */
-
-.pc-footer {
-  margin-top: 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.pc-footer__text {
-  font-size: 10px;
-  color: #333;
-  font-family: 'DM Mono', monospace;
-}
-
-.pc-footer__text span {
-  color: #555;
-}
 
 /* ─── Recharts overrides ─────────────────────────────────────────────────────── */
 

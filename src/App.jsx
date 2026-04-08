@@ -9,7 +9,25 @@ import { syncRides } from "./services/api";
 
 function Dashboard() {
   const { athlete, logout } = useAuth();
-  const { data, loading, error, refetch } = usePowerCurve(athlete?.id);
+
+  // Range A — primary curve (fetches all-time by default)
+  const [rangeA, setRangeA] = useState({ from: null, to: null });
+  // Range B — comparison curve (only fetches once the user sets both dates)
+  const [rangeB, setRangeB] = useState({ from: null, to: null });
+
+  const { data: dataA, loading: loadingA, error: errorA, refetch } =
+    usePowerCurve(athlete?.id, rangeA.from, rangeA.to);
+
+  // Pass null as athleteId until the user has selected a full range B,
+  // so the hook stays idle and we don't fire a redundant all-time request.
+  const bAthleteId = rangeB.from && rangeB.to ? athlete?.id : null;
+  const { data: dataB, loading: loadingB, error: errorB } =
+    usePowerCurve(bAthleteId, rangeB.from, rangeB.to);
+
+  // All-time best — always fetched on load with no date filter so the
+  // "Best" toggle button can show/hide the line instantly without a new request.
+  const { data: dataBest } = usePowerCurve(athlete?.id);
+
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState(null);
 
@@ -27,8 +45,16 @@ function Dashboard() {
     }
   }, [refetch]);
 
+  const handleRangeAChange = useCallback((from, to) => {
+    setRangeA({ from, to });
+  }, []);
+
+  const handleRangeBChange = useCallback((from, to) => {
+    setRangeB({ from, to });
+  }, []);
+
   return (
-    <div style={{ position: "relative" }}>
+    <div style={{ position: "relative", height: "100vh", overflow: "hidden" }}>
       <div style={{
         position: "absolute", top: 16, right: 16, zIndex: 10,
         display: "flex", alignItems: "center", gap: 12,
@@ -61,10 +87,16 @@ function Dashboard() {
         </button>
       </div>
       <PowerCurve
-        athleteWeightKg={data?.weight_kg ?? 70}
-        apiCurve={data?.curve ?? null}
-        isLoading={loading}
-        error={error}
+        athleteWeightKg={dataA?.weight_kg ?? 70}
+        apiCurveA={dataA?.curve ?? null}
+        apiCurveB={dataB?.curve ?? null}
+        apiCurveBest={dataBest?.curve ?? null}
+        isLoadingA={loadingA}
+        isLoadingB={loadingB}
+        errorA={errorA}
+        errorB={errorB}
+        onRangeAChange={handleRangeAChange}
+        onRangeBChange={handleRangeBChange}
       />
     </div>
   );
