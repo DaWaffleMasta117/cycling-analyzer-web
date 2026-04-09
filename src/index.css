@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+/* ─── Design tokens ──────────────────────────────────────────────────────────
+   Colors use standard Tailwind palette classes (zinc-*, slate-*, emerald-*, …).
+   Only non-color tokens live here.
+────────────────────────────────────────────────────────────────────────────── */
+@theme {
+  --font-sans: 'DM Sans', 'Helvetica Neue', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+
+  --animate-fade-down: fadeDown 0.15s ease;
+}
+
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Global resets ──────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  #root {
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  button:focus-visible,
+  input:focus-visible {
+    outline: 2px solid theme(--color-emerald-400);
+    outline-offset: 2px;
+  }
+}
+
+/* ─── Third-party overrides ──────────────────────────────────────────────── */
+
+/* Recharts SVG grid lines — cannot be targeted with utility classes */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: theme(--color-slate-900) !important;
+}

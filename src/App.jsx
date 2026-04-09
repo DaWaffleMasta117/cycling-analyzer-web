@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { usePowerCurve } from "./hooks/usePowerCurve";
 import PowerCurve from "./components/PowerCurve";
+import SyncBar from "./components/SyncBar";
 import LoginPage from "./pages/LoginPage";
 import CallbackPage from "./pages/CallbackPage";
 import { syncRides } from "./services/api";
@@ -54,38 +55,13 @@ function Dashboard() {
   }, []);
 
   return (
-    <div style={{ position: "relative", height: "100vh", overflow: "hidden" }}>
-      <div style={{
-        position: "absolute", top: 16, right: 16, zIndex: 10,
-        display: "flex", alignItems: "center", gap: 12,
-        fontFamily: "'DM Mono', monospace", fontSize: 11,
-      }}>
-        {syncMessage && (
-          <span style={{ color: syncMessage.startsWith("Sync failed") ? "#ff6b6b" : "#00e5a0" }}>
-            {syncMessage}
-          </span>
-        )}
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          style={{
-            background: "transparent", border: "1px solid #2a2a3a", color: "#888",
-            padding: "6px 12px", borderRadius: 4, cursor: syncing ? "default" : "pointer",
-            fontFamily: "inherit", fontSize: 11, opacity: syncing ? 0.5 : 1,
-          }}
-        >
-          {syncing ? "Syncing…" : "Sync Rides"}
-        </button>
-        <button
-          onClick={logout}
-          style={{
-            background: "transparent", border: "none", color: "#555",
-            padding: "6px 4px", cursor: "pointer", fontFamily: "inherit", fontSize: 11,
-          }}
-        >
-          Sign out
-        </button>
-      </div>
+    <div className="relative h-screen overflow-hidden">
+      <SyncBar
+        syncing={syncing}
+        syncMessage={syncMessage}
+        onSync={handleSync}
+        onLogout={logout}
+      />
       <PowerCurve
         athleteWeightKg={dataA?.weight_kg ?? 70}
         apiCurveA={dataA?.curve ?? null}
