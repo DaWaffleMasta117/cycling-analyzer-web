@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { usePowerCurve } from "./hooks/usePowerCurve";
+import { useRideStats } from "./hooks/useRideStats";
 import PowerCurve from "./components/PowerCurve";
 import SyncBar from "./components/SyncBar";
 import LoginPage from "./pages/LoginPage";
@@ -28,6 +29,10 @@ function Dashboard() {
   // All-time best — always fetched on load with no date filter so the
   // "Best" toggle button can show/hide the line instantly without a new request.
   const { data: dataBest } = usePowerCurve(athlete?.id);
+
+  // Ride stats (peak/mean avg W and NP) for the stat pills
+  const { data: statsDataA } = useRideStats(athlete?.id, rangeA.from, rangeA.to);
+  const { data: statsDataB } = useRideStats(bAthleteId, rangeB.from, rangeB.to);
 
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState(null);
@@ -73,6 +78,8 @@ function Dashboard() {
         errorB={errorB}
         onRangeAChange={handleRangeAChange}
         onRangeBChange={handleRangeBChange}
+        apiStatsA={statsDataA ?? null}
+        apiStatsB={statsDataB ?? null}
       />
     </div>
   );

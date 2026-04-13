@@ -43,6 +43,14 @@ function ErrorState({ message }) {
   );
 }
 
+function EmptyState() {
+  return (
+    <div className="bg-zinc-950 h-screen flex items-center justify-center">
+      <p className="text-zinc-600 font-mono text-xs">No rides yet — sync your rides to see your power curve.</p>
+    </div>
+  );
+}
+
 // ─── PowerCurve ───────────────────────────────────────────────────────────────
 
 export default function PowerCurve({
@@ -56,6 +64,8 @@ export default function PowerCurve({
   errorB           = null,
   onRangeAChange   = null,
   onRangeBChange   = null,
+  apiStatsA        = null,
+  apiStatsB        = null,
 }) {
   const [mounted,  setMounted]  = useState(false);
   const [showBest, setShowBest] = useState(false);
@@ -89,6 +99,7 @@ export default function PowerCurve({
   if (isLoadingA && !curveA) return <LoadingState />;
   if (errorA)                return <ErrorState message={errorA} />;
   if (!curveA)               return null;
+  if (apiCurveA?.length === 0) return <EmptyState />;
 
   return (
     <div className="bg-zinc-950 h-screen flex flex-col overflow-hidden font-sans text-zinc-200">
@@ -108,7 +119,7 @@ export default function PowerCurve({
               Mean Maximal Power
             </h1>
           </div>
-          <StatPills ftp={ftp} wkgFtp={wkgFtp} map5m={map5m} sprint={sprint} />
+          <StatPills statsA={apiStatsA} statsB={apiStatsB} />
         </div>
 
         {/* ── Controls bar ── */}

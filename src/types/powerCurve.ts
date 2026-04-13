@@ -27,6 +27,22 @@ export interface ChartDataPoint {
   curveBest?: number;
 }
 
+// ─── Ride stats API shape ─────────────────────────────────────────────────────
+
+/** Response body from GET /ride-stats */
+export interface RideStats {
+  athlete_id: number;
+  weight_kg: number;
+  /** Highest AveragePowerWatts in the range. */
+  peak_avg_watts: number;
+  /** Highest NormalizedPowerWatts in the range (0 if no NP data). */
+  peak_np_watts: number;
+  /** Mean AveragePowerWatts in the range. */
+  mean_avg_watts: number;
+  /** Mean NormalizedPowerWatts in the range (0 if no NP data). */
+  mean_np_watts: number;
+}
+
 // ─── Component prop types ─────────────────────────────────────────────────────
 
 export interface SyncBarProps {
@@ -37,12 +53,11 @@ export interface SyncBarProps {
 }
 
 export interface StatPillsProps {
-  ftp: number;
-  /** Pre-computed FTP / weight_kg, already formatted as a 2-decimal string. */
-  wkgFtp: string;
-  map5m: number;
-  sprint: number;
+  statsA: RideStats | null;
+  statsB: RideStats | null;
 }
+
+
 
 export interface DateRangeFilterProps {
   defaultLabel: string;

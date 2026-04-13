@@ -67,3 +67,16 @@ export async function getPowerCurve(athleteId, from = null, to = null) {
 
   return response.json();
 }
+
+// Get aggregate ride stats (peak/mean avg watts + NP) from the Rust metrics engine
+export async function getRideStats(athleteId, from = null, to = null) {
+  const params = new URLSearchParams({ athlete_id: athleteId });
+
+  if (from) params.append("from", from);
+  if (to) params.append("to", to);
+
+  const response = await fetch(`${METRICS_URL}/ride-stats?${params}`);
+  if (!response.ok) throw new Error(`Metrics request failed: ${response.status}`);
+
+  return response.json();
+}

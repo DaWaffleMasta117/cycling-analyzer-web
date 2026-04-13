@@ -1,32 +1,63 @@
-import type { StatPillsProps } from "../types/powerCurve";
+import type { StatPillsProps, RideStats } from "../types/powerCurve";
 
-// ─── StatPill ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-interface StatPillProps {
-  label: string;
-  value: number | string;
-  unit: string;
-  highlight?: boolean;
+function wkg(watts: number, weightKg: number): string {
+  if (!weightKg || weightKg <= 0) return "—";
+  return (watts / weightKg).toFixed(2);
 }
 
-function StatPill({ label, value, unit, highlight = false }: StatPillProps) {
+function fmt(value: number): string {
+  return value > 0 ? Math.round(value).toString() : "—";
+}
+
+// ─── CompareBox ───────────────────────────────────────────────────────────────
+
+interface CompareBoxProps {
+  label: string;
+  statsA: RideStats | null;
+  statsB: RideStats | null;
+  getValue: (s: RideStats) => number;
+}
+
+function CompareBox({ label, statsA, statsB, getValue }: CompareBoxProps) {
+  const wA = statsA ? getValue(statsA) : 0;
+  const wB = statsB ? getValue(statsB) : 0;
+
+  const wkgA = statsA ? wkg(wA, statsA.weight_kg) : "—";
+  const wkgB = statsB ? wkg(wB, statsB.weight_kg) : "—";
+
   return (
-    <div
-      className={`flex flex-col gap-0.5 py-2.5 px-4 bg-slate-900 border rounded min-w-[90px] ${
-        highlight ? "border-emerald-400" : "border-slate-800"
-      }`}
-    >
+    <div className="flex flex-col gap-1 py-2.5 px-4 bg-slate-900 border border-slate-800 rounded min-w-[110px]">
       <span className="text-[9px] text-zinc-600 tracking-[0.1em] uppercase font-mono">
         {label}
       </span>
-      <span
-        className={`text-[18px] font-bold leading-[1.1] font-mono ${
-          highlight ? "text-emerald-400" : "text-zinc-200"
-        }`}
-      >
-        {value}
-        <span className="text-[10px] text-zinc-700 ml-[3px]">{unit}</span>
-      </span>
+
+      {/* Range A row */}
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-[9px] text-zinc-600 font-mono w-[14px]">A</span>
+        <span className="text-[15px] font-bold leading-none font-mono text-zinc-200">
+          {fmt(wA)}
+          <span className="text-[9px] text-zinc-600 ml-[2px]">W</span>
+        </span>
+        <span className="text-[11px] font-mono text-sky-400 leading-none">
+          {wkgA}
+          <span className="text-[9px] text-zinc-600 ml-[2px]">w/kg</span>
+        </span>
+      </div>
+
+      {/* Range B row */}
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-[9px] text-emerald-400 font-mono w-[14px]">B</span>
+        <span className="text-[15px] font-bold leading-none font-mono text-emerald-400">
+          {statsB ? fmt(wB) : "—"}
+          {statsB && <span className="text-[9px] text-zinc-600 ml-[2px]">W</span>}
+        </span>
+        <span className="text-[11px] font-mono text-emerald-300 leading-none">
+          {statsB ? wkgB : ""}
+          {statsB && <span className="text-[9px] text-zinc-600 ml-[2px]">w/kg</span>}
+        </span>
+      </div>
     </div>
   );
 }
@@ -34,23 +65,43 @@ function StatPill({ label, value, unit, highlight = false }: StatPillProps) {
 // ─── StatPills ────────────────────────────────────────────────────────────────
 
 /**
- * The four key-metric pills shown in the top-right of the header:
- * FTP estimate, W/kg FTP, 5-minute peak, and 3-second sprint.
+ * Four comparison boxes showing peak and average power (Avg W and NP)
+ * for Range A vs Range B, with both watts and w/kg per range.
  */
-export default function StatPills({ ftp, wkgFtp, map5m, sprint }: StatPillsProps) {
+export default function StatPills({ statsA, statsB }: StatPillsProps) {
   return (
-    <div className="flex gap-2 flex-wrap" role="list" aria-label="Key power metrics">
+    <div className="flex gap-2 flex-wrap" role="list" aria-label="Power comparison metrics">
       <div role="listitem">
-        <StatPill label="FTP est." value={ftp} unit="W" />
+        <CompareBox
+          label="Peak Avg W"
+          statsA={statsA}
+          statsB={statsB}
+          getValue={s => s.peak_avg_watts}
+        />
       </div>
       <div role="listitem">
-        <StatPill label="W/kg FTP" value={wkgFtp} unit="" />
+        <CompareBox
+          label="Peak NP"
+          statsA={statsA}
+          statsB={statsB}
+          getValue={s => s.peak_np_watts}
+        />
       </div>
       <div role="listitem">
-        <StatPill label="5m Peak" value={map5m} unit="W" highlight />
+        <CompareBox
+          label="Avg W"
+          statsA={statsA}
+          statsB={statsB}
+          getValue={s => s.mean_avg_watts}
+        />
       </div>
       <div role="listitem">
-        <StatPill label="Sprint" value={sprint} unit="W" />
+        <CompareBox
+          label="Avg NP"
+          statsA={statsA}
+          statsB={statsB}
+          getValue={s => s.mean_np_watts}
+        />
       </div>
     </div>
   );
