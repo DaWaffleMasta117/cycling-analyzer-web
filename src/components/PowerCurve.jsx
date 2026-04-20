@@ -6,6 +6,40 @@ import PowerChart, { BEST_COLOR } from "./PowerChart";
 
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
 
+/**
+ * Formats an ISO date string (YYYY-MM-DD) into a short human-readable form,
+ * e.g. "Jan 1, 2024". Uses UTC so the date doesn't shift based on timezone.
+ */
+function fmtDate(iso) {
+  const d = new Date(iso + "T00:00:00Z");
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+}
+
+/**
+ * Builds the tooltip label for a date range.
+ * - Both null  → "All time"
+ * - from only  → "From Jan 1, 2024"
+ * - to only    → "To Jan 1, 2024"
+ * - Both set   → "Jan 1 – Dec 31, 2024"  (shared year when same, else full dates)
+ */
+function buildRangeLabel(from, to) {
+  if (!from && !to) return "All time";
+  if (from && !to)  return `From ${fmtDate(from)}`;
+  if (!from && to)  return `To ${fmtDate(to)}`;
+
+  const fromDate = new Date(from + "T00:00:00Z");
+  const toDate   = new Date(to   + "T00:00:00Z");
+
+  // Same year — compact form: "Jan 1 – Dec 31, 2024"
+  if (fromDate.getUTCFullYear() === toDate.getUTCFullYear()) {
+    const fromShort = fromDate.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    const toShort   = toDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+    return `${fromShort} – ${toShort}`;
+  }
+
+  return `${fmtDate(from)} – ${fmtDate(to)}`;
+}
+
 function buildCurveArray(apiCurve) {
   if (!apiCurve) return null;
   return DURATIONS.map(d => {
@@ -66,6 +100,8 @@ export default function PowerCurve({
   onRangeBChange   = null,
   apiStatsA        = null,
   apiStatsB        = null,
+  rangeA           = { from: null, to: null },
+  rangeB           = { from: null, to: null },
 }) {
   const [mounted,  setMounted]  = useState(false);
   const [showBest, setShowBest] = useState(false);
@@ -204,6 +240,8 @@ export default function PowerCurve({
           curveBest={curveBest}
           showBest={showBest}
           weightKg={athleteWeightKg}
+          rangeLabelA={buildRangeLabel(rangeA.from, rangeA.to)}
+          rangeLabelB={buildRangeLabel(rangeB.from, rangeB.to)}
           sprint={sprint}
           map5m={map5m}
           ftp={ftp}

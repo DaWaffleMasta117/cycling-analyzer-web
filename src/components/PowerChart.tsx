@@ -25,6 +25,8 @@ interface CustomTooltipProps extends TooltipProps<number, string> {
   weightKg: number;
   hasCurveB: boolean;
   showBest: boolean;
+  rangeLabelA: string;
+  rangeLabelB: string;
 }
 
 function CustomTooltip({
@@ -34,6 +36,8 @@ function CustomTooltip({
   weightKg,
   hasCurveB,
   showBest,
+  rangeLabelA,
+  rangeLabelB,
 }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
 
@@ -64,7 +68,7 @@ function CustomTooltip({
       {a && aVal !== null && (
         <div className="flex justify-between gap-4 mb-[3px]">
           <span className="text-[11px] text-zinc-400">
-            {hasCurveB ? "Range A" : "Watts"}
+            {hasCurveB ? rangeLabelA : "Watts"}
           </span>
           <span className="text-[11px] font-mono font-semibold text-white">
             {aVal}W
@@ -78,7 +82,7 @@ function CustomTooltip({
       {/* Range B */}
       {b && bVal !== null && (
         <div className="flex justify-between gap-4 mb-[3px]">
-          <span className="text-[11px] text-zinc-400">Range B</span>
+          <span className="text-[11px] text-zinc-400">{rangeLabelB}</span>
           <span className="text-[11px] font-mono font-semibold text-emerald-400">
             {bVal}W
             {wkg(bVal) && (
@@ -131,6 +135,8 @@ export default function PowerChart({
   curveBest,
   showBest,
   weightKg,
+  rangeLabelA,
+  rangeLabelB,
   sprint,
   map5m,
   ftp,
@@ -142,9 +148,11 @@ export default function PowerChart({
         weightKg={weightKg}
         hasCurveB={!!curveB}
         showBest={showBest && !!curveBest}
+        rangeLabelA={rangeLabelA}
+        rangeLabelB={rangeLabelB}
       />
     ),
-    [weightKg, curveB, showBest, curveBest]
+    [weightKg, curveB, showBest, curveBest, rangeLabelA, rangeLabelB]
   );
 
   return (

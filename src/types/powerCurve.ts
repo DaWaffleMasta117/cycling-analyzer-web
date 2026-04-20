@@ -74,6 +74,10 @@ export interface PowerChartProps {
   curveBest: number[] | null;
   showBest: boolean;
   weightKg: number;
+  /** Human-readable label for Range A shown in the tooltip (e.g. "Jan 1 – Dec 31, 2024"). */
+  rangeLabelA: string;
+  /** Human-readable label for Range B shown in the tooltip. */
+  rangeLabelB: string;
   /** Used for the ARIA label on the chart container. */
   sprint: number;
   map5m: number;

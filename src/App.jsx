@@ -80,6 +80,8 @@ function Dashboard() {
         onRangeBChange={handleRangeBChange}
         apiStatsA={statsDataA ?? null}
         apiStatsB={statsDataB ?? null}
+        rangeA={rangeA}
+        rangeB={rangeB}
       />
     </div>
   );
