@@ -1,42 +1,36 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function LoginPage() {
+  const { athlete, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Already logged in — send straight to the dashboard
+  useEffect(() => {
+    if (!loading && athlete) {
+      navigate("/", { replace: true });
+    }
+  }, [athlete, loading]);
+
   const handleLogin = () => {
     // Redirect to the .NET API which kicks off the Strava OAuth flow
     window.location.href = `${API_URL}/api/auth/login`;
   };
 
   return (
-    <div style={{
-      background: "#07070f",
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      fontFamily: "'DM Sans', sans-serif",
-      color: "#e0e0e0",
-      gap: 24,
-    }}>
-      <h1 style={{ fontSize: 28, fontWeight: 300, letterSpacing: "-0.02em" }}>
+    <div className="bg-zinc-950 min-h-screen flex flex-col items-center justify-center font-sans text-zinc-200 gap-6">
+      <h1 className="text-[28px] font-light tracking-tight">
         Cycling Analyzer
       </h1>
-      <p style={{ fontSize: 13, color: "#555" }}>
+      <p className="text-[13px] text-zinc-600">
         Connect your Strava account to get started
       </p>
       <button
         onClick={handleLogin}
-        style={{
-          background: "#fc4c02",
-          border: "none",
-          color: "#fff",
-          padding: "12px 32px",
-          borderRadius: 4,
-          fontSize: 13,
-          cursor: "pointer",
-          fontFamily: "'DM Mono', monospace",
-          letterSpacing: "0.08em",
-        }}
+        className="bg-[#fc4c02] text-white font-mono text-[13px] tracking-[0.08em] px-8 py-3 rounded cursor-pointer border-none hover:opacity-90 transition-opacity"
       >
         Connect with Strava
       </button>

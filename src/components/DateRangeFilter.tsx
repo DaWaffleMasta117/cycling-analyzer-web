@@ -54,7 +54,7 @@ export default function DateRangeFilter({
 
   const commit = (from: string, to: string, label: string) => {
     setActiveLabel(label);
-    onApply(from, to);
+    onApply(from, to, label);
     setOpen(false);
   };
 
@@ -80,7 +80,7 @@ export default function DateRangeFilter({
     setActiveLabel("");
     setDayFrom("");
     setDayTo("");
-    onApply(null, null);
+    onApply(null, null, "");
   };
 
   const hasActive   = !!activeLabel;

@@ -23,16 +23,7 @@ export default function CallbackPage() {
   }, []);
 
   return (
-    <div style={{
-      background: "#07070f",
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "#e0e0e0",
-      fontFamily: "'DM Mono', monospace",
-      fontSize: 12,
-    }}>
+    <div className="bg-zinc-950 min-h-screen flex items-center justify-center font-mono text-xs text-zinc-200">
       Connecting to Strava...
     </div>
   );

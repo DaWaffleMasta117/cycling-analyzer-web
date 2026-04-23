@@ -13,9 +13,9 @@ function Dashboard() {
   const { athlete, logout } = useAuth();
 
   // Range A — primary curve (fetches all-time by default)
-  const [rangeA, setRangeA] = useState({ from: null, to: null });
+  const [rangeA, setRangeA] = useState({ from: null, to: null, label: "" });
   // Range B — comparison curve (only fetches once the user sets both dates)
-  const [rangeB, setRangeB] = useState({ from: null, to: null });
+  const [rangeB, setRangeB] = useState({ from: null, to: null, label: "" });
 
   const { data: dataA, loading: loadingA, error: errorA, refetch } =
     usePowerCurve(athlete?.id, rangeA.from, rangeA.to);
@@ -51,12 +51,12 @@ function Dashboard() {
     }
   }, [refetch]);
 
-  const handleRangeAChange = useCallback((from, to) => {
-    setRangeA({ from, to });
+  const handleRangeAChange = useCallback((from, to, label = "") => {
+    setRangeA({ from, to, label });
   }, []);
 
-  const handleRangeBChange = useCallback((from, to) => {
-    setRangeB({ from, to });
+  const handleRangeBChange = useCallback((from, to, label = "") => {
+    setRangeB({ from, to, label });
   }, []);
 
   return (
@@ -89,7 +89,12 @@ function Dashboard() {
 
 function ProtectedRoute({ children }) {
   const { athlete, loading } = useAuth();
-  if (loading) return null;
+  // Hold until auth state is resolved to avoid a flash of either page
+  if (loading) return (
+    <div className="bg-zinc-950 h-screen flex items-center justify-center">
+      <span className="text-zinc-700 font-mono text-xs">Loading...</span>
+    </div>
+  );
   if (!athlete) return <Navigate to="/login" replace />;
   return children;
 }

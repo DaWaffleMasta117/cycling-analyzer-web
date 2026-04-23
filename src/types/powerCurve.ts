@@ -62,7 +62,7 @@ export interface StatPillsProps {
 export interface DateRangeFilterProps {
   defaultLabel: string;
   accentColor?: string;
-  onApply: (from: string | null, to: string | null) => void;
+  onApply: (from: string | null, to: string | null, label: string) => void;
 }
 
 export interface PowerChartProps {
